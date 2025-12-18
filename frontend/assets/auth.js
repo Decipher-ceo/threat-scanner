@@ -6,7 +6,9 @@ let currentUser = {
     is_admin: true,
     id: 1
 };
-const API_BASE_URL = 'http://localhost:5000/api'; // Adjust if your backend runs on different port
+const API_BASE_URL = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+    ? 'http://localhost:5000/api'
+    : '/api'; // Adjusted for Vercel rewrites
 
 // Initialize auth state
 function initAuth() {

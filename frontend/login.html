@@ -244,7 +244,8 @@
                 return;
             }
 
-            fetch("http://localhost:5000/api/auth/me", {
+            const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+            fetch(`${API_BASE}/api/auth/me`, {
                 headers: {
                     "Authorization": `Bearer ${token}`
                 }
@@ -267,7 +268,8 @@
 
                 // IMPORTANT: do NOT redirect immediately
                 // Verify token with backend
-                fetch("http://localhost:5000/api/auth/me", {
+                const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+                fetch(`${API_BASE}/api/auth/me`, {
                     headers: {
                         "Authorization": `Bearer ${token}`
                     }
