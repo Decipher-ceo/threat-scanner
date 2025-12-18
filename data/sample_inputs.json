@@ -1,0 +1,13 @@
+{
+  "emails": [
+    {"sender":"no-reply@googIe-security.com","subject":"Action required: verify","body":"Click https://googIe-security.com/login to verify your account","attachments":[]},
+    {"sender":"billing@paypal.com","subject":"Payment failed","body":"Dear user, your payment failed. Visit https://paypal.com/ to re-pay","attachments":[]}
+  ],
+  "urls": [
+    {"url":"https://microsoft.com.login.othersite.net/secure"},
+    {"url":"https://google.com"}
+  ],
+  "sms": [
+    {"sender":"+1234567890","body":"Your delivery failed. Click http://bit.ly/abc123 to reschedule"}
+  ]
+}

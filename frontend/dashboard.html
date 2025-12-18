@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Threat_Scanner — Manager Dashboard</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="assets/auth.js" defer></script>
+  <script src="../js/dashboard.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Wait for auth to initialize then protect route
+      if (window.auth && window.auth.protectRoute) {
+        window.auth.protectRoute();
+      } else {
+        // Fallback if auth.js hasn't exposed it yet (though defer should handle order, DOMContentLoaded is safer)
+        const checkAuth = setInterval(() => {
+          if (window.auth && window.auth.protectRoute) {
+            clearInterval(checkAuth);
+            window.auth.protectRoute();
+          }
+        }, 50);
+      }
+    });
+  </script>
+</head>
+
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">T_S</div>
+        <div>
+          <div class="title">Threat_Scanner</div>
+          <div style="color:var(--muted);font-size:13px">Manager Dashboard</div>
+        </div>
+      </div>
+
+      <nav class="topnav">
+        <a href="dashboard.html" class="active">Dashboard</a>
+        <a href="testing.html">Testing</a>
+        <a href="reports.html">Reports</a>
+        <button id="logoutBtn" class="btn btn-ghost" style="margin-left: auto; padding: 0.5rem 1rem;">Logout</button>
+      </nav>
+    </header>
+
+    <!-- User Greeting Card -->
+    <div class="card" style="margin-bottom: 1.5rem; background: var(--panel); border-left: 4px solid var(--accent);">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <h2 style="margin: 0 0 0.5rem 0; color: var(--accent); font-size: 1.5rem;">
+            <span id="welcome-message">Welcome Admin, <span class="cyber-greet"
+                data-text="Decipher">Decipher</span></span>
+          </h2>
+          <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+            <span id="login-time">Session started: <span id="last-login-time">Just now</span></span>
+            <span style="margin: 0 8px;">|</span>
+            <span id="user-role">Access Level: <span id="user-role-display">Security Analyst</span></span>
+          </p>
+        </div>
+        <div
+          style="background: rgba(var(--accent-rgb), 0.1); padding: 10px 16px; border-radius: 6px; text-align: center;">
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: 0.5px;">
+            SECURITY STATUS</div>
+          <div style="display: flex; align-items: center;">
+            <div style="width: 8px; height: 8px; background: #4CAF50; border-radius: 50%; margin-right: 8px;"></div>
+            <span style="color: #4CAF50; font-weight: 600; font-size: 0.85rem; letter-spacing: 0.5px;">ALL SYSTEMS
+              SECURE</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div style="flex:1">
+          <input class="input" id="search-input" placeholder="Search stats by date/time — e.g. 2025-12-01 14:00" />
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" id="search-button" onclick="if(window.performSearch) window.performSearch();">
+            <span>Search</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:18px">
+        <!-- Circular stats -->
+        <div class="col-4" id="email-stat">
+          <div class="stat card">
+            <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;width:100%">
+              <div class="stat-info">
+                <div style="font-weight:800">Email Stats</div>
+                <small class="hint">Latest: No scans yet</small>
+              </div>
+              <div style="text-align:right;color:var(--muted);white-space:nowrap;margin-left:auto">
+                Risk: <strong class="risk-indicator" style="color:var(--good)">Low</strong>
+              </div>
+            </div>
+            <div class="circle"
+              style="background: conic-gradient(var(--good) 0 100%, rgba(255,255,255,0.04) 100% 100%);">100%</div>
+            <small>Email Suspicion Status</small>
+          </div>
+        </div>
+
+        <div class="col-4" id="sms-stat">
+          <div class="stat card">
+            <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;width:100%">
+              <div class="stat-info">
+                <div style="font-weight:800">SMS Stats</div>
+                <small class="hint">Latest: No scans yet</small>
+              </div>
+              <div style="text-align:right;color:var(--muted);white-space:nowrap;margin-left:auto">
+                Risk: <strong class="risk-indicator" style="color:var(--good)">Low</strong>
+              </div>
+            </div>
+            <div class="circle"
+              style="background: conic-gradient(var(--good) 0 100%, rgba(255,255,255,0.04) 100% 100%);">100%</div>
+            <small>SMS Suspicion Status</small>
+          </div>
+        </div>
+
+        <div class="col-4" id="url-stat">
+          <div class="stat card">
+            <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;width:100%">
+              <div class="stat-info">
+                <div style="font-weight:800">URL Stats</div>
+                <small class="hint">Latest: No scans yet</small>
+              </div>
+              <div style="text-align:right;color:var(--muted);white-space:nowrap;margin-left:auto">
+                Risk: <strong class="risk-indicator" style="color:var(--good)">Low</strong>
+              </div>
+            </div>
+            <div class="circle"
+              style="background: conic-gradient(var(--good) 0 100%, rgba(255,255,255,0.04) 100% 100%);">100%</div>
+            <small>URL and Domain Suspicion Status</small>
+          </div>
+        </div>
+
+        <!-- Pie Chart Section -->
+        <div class="col-4">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div style="font-weight:800">Overall Statistics</div>
+              <div style="color:var(--muted);font-size:13px" id="pie-chart-stats">Tests: 0</div>
+            </div>
+            <div id="pie-chart-container"
+              style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;position:relative;">
+              <div style="color:var(--muted);text-align:center">Loading chart...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bar charts section -->
+        <div class="col-8">
+          <div class="card chart">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+              <div style="font-weight:800">Test Lab Activity</div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <div style="color:var(--muted);font-size:13px;display:flex;align-items:center;gap:6px">
+                  <span>Dept:</span>
+                  <select class="input" id="bar-chart-department"
+                    style="width:120px;padding:6px 10px; background:linear-gradient(90deg, #134567 0%, #091d34 100%);border: none;cursor:pointer;">
+                    <option value="all">All</option>
+                    <option value="email">Email</option>
+                    <option value="sms">SMS</option>
+                    <option value="url">URL</option>
+                  </select>
+                </div>
+                <div style="color:var(--muted);font-size:13px;display:flex;align-items:center;gap:6px">
+                  <span>Period:</span>
+                  <select class="input" id="bar-chart-period"
+                    style="width:140px;padding:6px 10px; background:linear-gradient(90deg, #134567 0%, #091d34 100%);border: none;cursor:pointer;">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="3months">3 Months</option>
+                    <option value="6months">6 Months</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div id="bar-chart-container" style="margin-top:20px;min-height:200px">
+              <div style="color:var(--muted);text-align:center;padding:40px">Loading chart data...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent items / table -->
+        <div class="col-4">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:800">Latest incidents</div>
+              <div style="color:var(--muted);font-size:13px" id="latest-incidents-count">0 incidents</div>
+            </div>
+
+            <table class="table" style="margin-top:10px">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Summary</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="2" style="color:var(--muted);text-align:center">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-analyze"
+                onclick="if(window.refreshIncidents) { window.refreshIncidents(); } if(window.refreshPieChart) { window.refreshPieChart(); }"
+                style="background: linear-gradient(90deg, #4CAF50 0%, #2E7D32 100%); color: white; border: none;">
+                Refresh
+              </button>
+              <button class="btn btn-ghost" onclick="window.location.href='reports.html'">Details</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- big table for department summary -->
+        <div class="col-12">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:800">Department response summary</div>
+              <div style="color:var(--muted);font-size:13px" id="last-updated">Updated: --</div>
+            </div>
+
+            <table class="table" style="margin-top:12px">
+              <thead>
+                <tr>
+                  <th>Department</th>
+                  <th>Handled</th>
+                  <th>Open</th>
+                  <th>Avg Response</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="4" style="color:var(--muted);text-align:center">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <div>
+      <footer class="footer" style="font-size: 20px;">
+        <div class="logo">T_S</div>
+        <div style="display: inline-block;">Protect Your Digital Space</div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    // Update last updated time
+    function updateLastUpdated() {
+      const now = new Date();
+      const timeStr = now.toLocaleString();
+      const element = document.getElementById("last-updated");
+      if (element) {
+        element.textContent = `Updated: ${timeStr}`;
+      }
+    }
+
+    // Override loadDashboardStats to update timestamp
+    const originalLoad = window.loadDashboardStats || loadDashboardStats;
+    window.loadDashboardStats = function () {
+      if (originalLoad) originalLoad();
+      updateLastUpdated();
+      // Also refresh pie chart when refreshing all
+      if (window.updatePieChart) {
+        window.updatePieChart();
+      }
+    };
+
+    // Make refreshPieChart accessible
+    if (window.refreshPieChart) {
+      // Already defined
+    } else {
+      window.refreshPieChart = function () {
+        const refreshBtn = event?.target || document.querySelector('#pie-chart-container')?.parentElement?.querySelector('.btn-ghost');
+        if (!refreshBtn) {
+          // Try to find button by onclick attribute
+          const btn = Array.from(document.querySelectorAll('button')).find(b => b.onclick && b.textContent.includes('Refresh'));
+          if (btn) {
+            btn.disabled = true;
+            btn.textContent = '⏳';
+            if (window.updatePieChart) {
+              window.updatePieChart().finally(() => {
+                btn.disabled = false;
+                btn.textContent = 'Refresh';
+              });
+            }
+          }
+          return;
+        }
+
+        const originalText = refreshBtn.textContent;
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = '⏳';
+
+        if (window.updatePieChart) {
+          window.updatePieChart().finally(() => {
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = 'Refresh';
+          });
+        }
+      };
+    }
+
+    // Initial update
+    updateLastUpdated();
+  </script>
+</body>
+
+</html>

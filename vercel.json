@@ -1,0 +1,20 @@
+{
+    "rewrites": [
+        {
+            "source": "/dashboard/:match*",
+            "destination": "https://YOUR_RENDER_APP_URL/dashboard/:match*"
+        },
+        {
+            "source": "/stats/:match*",
+            "destination": "https://YOUR_RENDER_APP_URL/stats/:match*"
+        },
+        {
+            "source": "/analyze/:match*",
+            "destination": "https://YOUR_RENDER_APP_URL/analyze/:match*"
+        },
+        {
+            "source": "/auth/:match*",
+            "destination": "https://YOUR_RENDER_APP_URL/auth/:match*"
+        }
+    ]
+}

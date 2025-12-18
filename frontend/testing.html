@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Threat_Scanner— Tests</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <style>
+    .result-card {
+      margin-top: 20px;
+      padding: 20px;
+      background: var(--panel);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .verdict-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .verdict-badge.phishing {
+      background: var(--danger);
+      color: white;
+    }
+
+    .verdict-badge.suspicious {
+      background: var(--warn);
+      color: white;
+    }
+
+    .verdict-badge.safe {
+      background: var(--good);
+      color: white;
+    }
+
+    .indicator-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+
+    .indicator-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .indicator-dot.phishing {
+      background: var(--danger);
+    }
+
+    .indicator-dot.suspicious {
+      background: var(--warn);
+    }
+
+    .indicator-dot.safe {
+      background: var(--good);
+    }
+
+    .link-item {
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+
+    .link-item a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .link-item a:hover {
+      text-decoration: underline;
+    }
+  </style>
+  <script src="assets/auth.js" defer></script>
+  <script src="../js/dashboard.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Fallback loop if auth.protectRoute isn't ready immediately
+      const checkAuth = setInterval(() => {
+        if (window.auth && window.auth.protectRoute) {
+          clearInterval(checkAuth);
+          window.auth.protectRoute();
+        }
+      }, 50);
+    });
+    const API_BASE = "http://127.0.0.1:5000";
+
+    // Tab switcher
+    function selectTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-section').forEach(s => s.style.display = 'none');
+      document.getElementById(tab).style.display = 'block';
+      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+      // Clear previous results when switching tabs
+      clearResults(tab);
+    }
+
+    function clearResults(tab) {
+      if (tab === 'email') {
+        const results = document.getElementById('emailResults');
+        if (results) results.style.display = 'none';
+      } else if (tab === 'sms') {
+        const results = document.getElementById('smsResults');
+        if (results) results.style.display = 'none';
+        document.getElementById('smsContent').value = '';
+        document.getElementById('smsSender').value = '';
+        document.getElementById('smsNumber').value = '';
+      } else if (tab === 'url') {
+        const results = document.getElementById('urlResults');
+        if (results) results.style.display = 'none';
+        document.getElementById('urlInput').value = '';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => selectTab('email'));
+
+    // =========================
+    // EMAIL SCANNER
+    // =========================
+    async function analyzeEmail() {
+      const sender = document.getElementById('emailSender').value.trim();
+      const subject = document.getElementById('emailSubject').value.trim();
+      const content = document.getElementById('emailContent').value.trim();
+      const attachmentsInput = document.getElementById('emailAttachments').value.trim();
+
+      if (!content) {
+        alert('Please enter email content to analyze');
+        return;
+      }
+
+      try {
+        const analyzeBtn = document.querySelector('#email .btn-analyze');
+        analyzeBtn.disabled = true;
+        analyzeBtn.textContent = 'Analyzing...';
+
+        // Parse attachments (comma-separated)
+        const attachments = attachmentsInput ? attachmentsInput.split(',').map(a => a.trim()) : [];
+
+        const res = await fetch(`${API_BASE}/scan-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sender, subject, content, attachments })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        displayEmailResults(data);
+      } catch (error) {
+        console.error('Error analyzing email:', error);
+        alert('An error occurred while analyzing the email. Please try again.');
+      } finally {
+        const analyzeBtn = document.querySelector('#email .btn-analyze');
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = 'Analyze Email';
+      }
+    }
+
+    function displayEmailResults(data) {
+      const resultsDiv = document.getElementById('emailResults');
+      const verdictSpan = document.getElementById('emailVerdict');
+      const scoreSpan = document.getElementById('emailScore');
+      const indicatorsDiv = document.getElementById('emailIndicators');
+      const linksSection = document.getElementById('emailLinksSection');
+      const linksDiv = document.getElementById('emailLinks');
+      const attachmentsSection = document.getElementById('emailAttachmentsSection');
+      const attachmentsDiv = document.getElementById('emailAttachmentsList');
+
+      // Clear previous results
+      indicatorsDiv.innerHTML = '';
+      linksDiv.innerHTML = '';
+      attachmentsDiv.innerHTML = '';
+
+      // Set verdict and score
+      const verdict = data.status ? data.status.toLowerCase() : 'safe';
+      const score = data.score || 0;
+
+      // Set verdict text and color
+      let verdictText = '';
+      let verdictClass = '';
+
+      if (verdict === 'phishing') {
+        verdictText = 'Phishing Detected';
+        verdictClass = 'phishing';
+      } else if (verdict === 'suspicious') {
+        verdictText = 'Suspicious';
+        verdictClass = 'suspicious';
+      } else {
+        verdictText = 'Safe';
+        verdictClass = 'safe';
+      }
+
+      verdictSpan.textContent = verdictText;
+      verdictSpan.className = `verdict-badge ${verdictClass}`;
+      scoreSpan.textContent = `${score}/100`;
+
+      // Display indicators
+      if (data.indicators) {
+        for (const [indicator, isPresent] of Object.entries(data.indicators)) {
+          if (isPresent) {
+            const indicatorText = indicator.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            const indicatorEl = document.createElement('div');
+            indicatorEl.className = 'indicator-item';
+            indicatorEl.innerHTML = `
+              <span class="indicator-dot ${verdictClass}"></span>
+              <span>${indicatorText}</span>
+            `;
+            indicatorsDiv.appendChild(indicatorEl);
+          }
+        }
+      }
+
+      // Display reasons
+      if (data.reasons && data.reasons.length > 0) {
+        const reasonsDiv = document.createElement('div');
+        reasonsDiv.className = 'indicator-item';
+        reasonsDiv.style.marginTop = '12px';
+        reasonsDiv.innerHTML = `
+          <div style="font-weight: 500; margin-bottom: 4px;">Reasons:</div>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${data.reasons.map(reason => `<li>${reason}</li>`).join('')}
+          </ul>
+        `;
+        indicatorsDiv.appendChild(reasonsDiv);
+      }
+
+      // Display links if found
+      if (data.links_found && data.links_found.length > 0) {
+        linksSection.style.display = 'block';
+        data.links_found.forEach(link => {
+          const linkEl = document.createElement('div');
+          linkEl.className = 'link-item';
+          linkEl.innerHTML = `
+            <a href="${link}" target="_blank" rel="noopener noreferrer">${link}</a>
+            <span class="link-status">(Found in email)</span>
+          `;
+          linksDiv.appendChild(linkEl);
+        });
+      } else {
+        linksSection.style.display = 'none';
+      }
+
+      // Display attachments if found
+      if (data.attachments_found && data.attachments_found.length > 0) {
+        attachmentsSection.style.display = 'block';
+        data.attachments_found.forEach(att => {
+          const attEl = document.createElement('div');
+          attEl.className = 'link-item';
+          attEl.textContent = att;
+          attachmentsDiv.appendChild(attEl);
+        });
+      } else {
+        attachmentsSection.style.display = 'none';
+      }
+
+      // Show results
+      resultsDiv.style.display = 'block';
+      resultsDiv.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // =========================
+    // SMS SCANNER
+    // =========================
+    async function analyzeSMS() {
+      const sender = document.getElementById('smsSender').value.trim();
+      const number = document.getElementById('smsNumber').value.trim();
+      const content = document.getElementById('smsContent').value.trim();
+
+      if (!content) {
+        alert('Please enter the SMS content to analyze');
+        return;
+      }
+
+      try {
+        const analyzeBtn = document.querySelector('#sms .btn-analyze');
+        const originalBtnText = analyzeBtn.textContent;
+        analyzeBtn.disabled = true;
+        analyzeBtn.textContent = 'Analyzing...';
+
+        const res = await fetch(`${API_BASE}/scan-sms`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sender, number, content })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        displaySMSResults(data);
+      } catch (error) {
+        console.error('Error analyzing SMS:', error);
+        alert('An error occurred while analyzing the SMS. Please try again.');
+      } finally {
+        const analyzeBtn = document.querySelector('#sms .btn-analyze');
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = 'Analyze SMS';
+      }
+    }
+
+    function displaySMSResults(data) {
+      const resultsDiv = document.getElementById('smsResults');
+      const verdictSpan = document.getElementById('smsVerdict');
+      const scoreSpan = document.getElementById('smsScore');
+      const indicatorsDiv = document.getElementById('smsIndicators');
+      const linksSection = document.getElementById('smsLinksSection');
+      const linksDiv = document.getElementById('smsLinks');
+
+      // Clear previous results
+      indicatorsDiv.innerHTML = '';
+      linksDiv.innerHTML = '';
+
+      // Set verdict and score
+      const verdict = data.status ? data.status.toLowerCase() : 'safe';
+      const score = data.score || 0;
+
+      // Set verdict text and color
+      let verdictText = '';
+      let verdictClass = '';
+
+      if (verdict === 'phishing') {
+        verdictText = 'Phishing Detected';
+        verdictClass = 'phishing';
+      } else if (verdict === 'suspicious') {
+        verdictText = 'Suspicious';
+        verdictClass = 'suspicious';
+      } else {
+        verdictText = 'Safe';
+        verdictClass = 'safe';
+      }
+
+      verdictSpan.textContent = verdictText;
+      verdictSpan.className = `verdict-badge ${verdictClass}`;
+      scoreSpan.textContent = `${score}/100`;
+
+      // Display indicators
+      if (data.indicators) {
+        for (const [indicator, isPresent] of Object.entries(data.indicators)) {
+          if (isPresent) {
+            const indicatorText = indicator.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            const indicatorEl = document.createElement('div');
+            indicatorEl.className = 'indicator-item';
+            indicatorEl.innerHTML = `
+              <span class="indicator-dot ${verdictClass}"></span>
+              <span>${indicatorText}</span>
+            `;
+            indicatorsDiv.appendChild(indicatorEl);
+          }
+        }
+      }
+
+      // Display reasons
+      if (data.reasons && data.reasons.length > 0) {
+        const reasonsDiv = document.createElement('div');
+        reasonsDiv.className = 'indicator-item';
+        reasonsDiv.style.marginTop = '12px';
+        reasonsDiv.innerHTML = `
+          <div style="font-weight: 500; margin-bottom: 4px;">Reasons:</div>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${data.reasons.map(reason => `<li>${reason}</li>`).join('')}
+          </ul>
+        `;
+        indicatorsDiv.appendChild(reasonsDiv);
+      }
+
+      // Display links if found
+      if (data.links_found && data.links_found.length > 0) {
+        linksSection.style.display = 'block';
+        data.links_found.forEach(link => {
+          const linkEl = document.createElement('div');
+          linkEl.className = 'link-item';
+          linkEl.innerHTML = `
+            <a href="${link}" target="_blank" rel="noopener noreferrer">${link}</a>
+            <span class="link-status">(Found in SMS)</span>
+          `;
+          linksDiv.appendChild(linkEl);
+        });
+      } else {
+        linksSection.style.display = 'none';
+      }
+
+      // Show results
+      resultsDiv.style.display = 'block';
+      resultsDiv.scrollIntoView({ behavior: 'smooth' });
+
+      // Refresh pie chart on dashboard if it exists
+      if (window.updatePieChart) {
+        setTimeout(() => window.updatePieChart(), 500);
+      }
+    }
+
+    // =========================
+    // URL SCANNER
+    // =========================
+    async function analyzeURL() {
+      const url = document.getElementById('urlInput').value.trim();
+
+      if (!url) {
+        alert('Please enter a URL to analyze');
+        return;
+      }
+
+      try {
+        const analyzeBtn = document.querySelector('#url .btn-analyze');
+        analyzeBtn.disabled = true;
+        analyzeBtn.textContent = 'Analyzing...';
+
+        const res = await fetch(`${API_BASE}/scan-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        displayURLResults(data);
+      } catch (error) {
+        console.error('Error analyzing URL:', error);
+        alert('An error occurred while analyzing the URL. Please try again.');
+      } finally {
+        const analyzeBtn = document.querySelector('#url .btn-analyze');
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = 'Analyze URL';
+      }
+    }
+
+    function displayURLResults(data) {
+      const resultsDiv = document.getElementById('urlResults');
+      const verdictSpan = document.getElementById('urlVerdict');
+      const scoreSpan = document.getElementById('urlScore');
+      const domainSpan = document.getElementById('urlDomain');
+      const indicatorsDiv = document.getElementById('urlIndicators');
+
+      // Clear previous results
+      indicatorsDiv.innerHTML = '';
+
+      // Set verdict and score
+      const verdict = data.status ? data.status.toLowerCase() : 'safe';
+      const score = data.score || 0;
+      const domain = data.domain || 'N/A';
+
+      // Set verdict text and color
+      let verdictText = '';
+      let verdictClass = '';
+
+      if (verdict === 'phishing') {
+        verdictText = 'Phishing Detected';
+        verdictClass = 'phishing';
+      } else if (verdict === 'suspicious') {
+        verdictText = 'Suspicious';
+        verdictClass = 'suspicious';
+      } else {
+        verdictText = 'Safe';
+        verdictClass = 'safe';
+      }
+
+      verdictSpan.textContent = verdictText;
+      verdictSpan.className = `verdict-badge ${verdictClass}`;
+      scoreSpan.textContent = `${score}/100`;
+      domainSpan.textContent = domain;
+
+      // Display indicators
+      if (data.indicators) {
+        for (const [indicator, value] of Object.entries(data.indicators)) {
+          if (value === true || (Array.isArray(value) && value.length > 0)) {
+            const indicatorText = indicator.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            const indicatorEl = document.createElement('div');
+            indicatorEl.className = 'indicator-item';
+            let displayValue = '';
+            if (Array.isArray(value)) {
+              displayValue = `: ${value.join(', ')}`;
+            }
+            indicatorEl.innerHTML = `
+              <span class="indicator-dot ${verdictClass}"></span>
+              <span>${indicatorText}${displayValue}</span>
+            `;
+            indicatorsDiv.appendChild(indicatorEl);
+          }
+        }
+      }
+
+      // Display reasons
+      if (data.reasons && data.reasons.length > 0) {
+        const reasonsDiv = document.createElement('div');
+        reasonsDiv.className = 'indicator-item';
+        reasonsDiv.style.marginTop = '12px';
+        reasonsDiv.innerHTML = `
+          <div style="font-weight: 500; margin-bottom: 4px;">Reasons:</div>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${data.reasons.map(reason => `<li>${reason}</li>`).join('')}
+          </ul>
+        `;
+        indicatorsDiv.appendChild(reasonsDiv);
+      }
+
+      // Show results
+      resultsDiv.style.display = 'block';
+      resultsDiv.scrollIntoView({ behavior: 'smooth' });
+
+      // Refresh pie chart on dashboard if it exists
+      if (window.updatePieChart) {
+        setTimeout(() => window.updatePieChart(), 500);
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">T_S</div>
+        <div>
+          <div class="title">Threat_Scanner</div>
+          <div style="color:var(--muted);font-size:13px">Testing Tools</div>
+        </div>
+      </div>
+      <nav class="topnav">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="testing.html" class="active">Testing</a>
+        <a href="reports.html">Reports</a>
+        <button id="logoutBtn" class="btn btn-ghost" style="margin-left: auto; padding: 0.5rem 1rem;">Logout</button>
+      </nav>
+    </header>
+
+    <main class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="display:flex;flex-direction:column">
+          <div style="font-weight:800">Run Phishing Test</div>
+          <div class="hint">Select a department and enter inputs below. All tests use strict JSON rule validation.</div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Departments">
+          <div class="tab" data-tab="email" onclick="selectTab('email')">Email</div>
+          <div class="tab" data-tab="sms" onclick="selectTab('sms')">SMS</div>
+          <div class="tab" data-tab="url" onclick="selectTab('url')">URL</div>
+        </div>
+      </div>
+
+      <!-- Email Test Lab -->
+      <section id="email" class="tab-section section" style="display:none">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <div style="font-weight:800">Email Test Lab</div>
+              <div class="hint">Analyze email using email_rules.json validation</div>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:16px">
+            <div class="kv">
+              <label class="hint">Sender email address</label>
+              <input type="text" class="input" placeholder="spoof@domain.com" id="emailSender">
+            </div>
+
+            <div class="kv">
+              <label class="hint">Subject (optional)</label>
+              <input type="text" class="input" placeholder="Email subject line..." id="emailSubject">
+            </div>
+
+            <div class="kv">
+              <label class="hint">Email content (paste raw)</label>
+              <textarea class="input" placeholder="Full email body, headers..." rows="8" id="emailContent"></textarea>
+            </div>
+
+            <div class="kv">
+              <label class="hint">Attachments (comma-separated, optional)</label>
+              <input type="text" class="input" placeholder="file.exe, document.pdf" id="emailAttachments">
+            </div>
+
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-analyze" type="button" onclick="analyzeEmail()">Analyze Email</button>
+            </div>
+          </div>
+
+          <!-- Results Section -->
+          <div id="emailResults" style="margin-top:24px;display:none" class="result-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <div>
+                <div style="font-weight:800">Analysis Results</div>
+                <div class="hint">Detailed breakdown using email_rules.json</div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:0;overflow:hidden">
+              <div
+                style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div class="hint">Status</div>
+                  <div id="emailVerdict" style="font-weight:500;margin-top:4px"></div>
+                </div>
+                <div style="text-align:right">
+                  <div class="hint">Risk Score</div>
+                  <div id="emailScore" style="font-weight:500;margin-top:4px"></div>
+                </div>
+              </div>
+
+              <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.05)">
+                <div style="font-weight:500;margin-bottom:12px">Indicators</div>
+                <div id="emailIndicators" style="display:grid;gap:8px"></div>
+              </div>
+
+              <div id="emailLinksSection"
+                style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.05);display:none">
+                <div style="font-weight:500;margin-bottom:12px">Links Found</div>
+                <div id="emailLinks" style="display:grid;gap:8px"></div>
+              </div>
+
+              <div id="emailAttachmentsSection" style="padding:16px;display:none">
+                <div style="font-weight:500;margin-bottom:12px">Attachments Found</div>
+                <div id="emailAttachmentsList" style="display:grid;gap:8px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SMS Test Lab -->
+      <section id="sms" class="tab-section section" style="display:none">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <div style="font-weight:800">SMS Test Lab</div>
+              <div class="hint">Check SMS messages using sms_rules.json validation</div>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:16px">
+            <div class="kv">
+              <label class="hint">Sender Name (optional)</label>
+              <input type="text" class="input" placeholder="e.g., OPAY" id="smsSender">
+            </div>
+
+            <div class="kv">
+              <label class="hint">Phone Number (optional)</label>
+              <input type="text" class="input" placeholder="e.g., +1234567890" id="smsNumber">
+            </div>
+
+            <div class="kv">
+              <label class="hint">SMS Content</label>
+              <textarea class="input" placeholder="Paste the SMS content here..." id="smsContent" rows="6"></textarea>
+            </div>
+
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-analyze" type="button" onclick="analyzeSMS()">Analyze SMS</button>
+            </div>
+          </div>
+
+          <!-- Results Section -->
+          <div id="smsResults" style="margin-top:24px;display:none" class="result-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <div>
+                <div style="font-weight:800">Analysis Results</div>
+                <div class="hint">Detailed breakdown using sms_rules.json</div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:0;overflow:hidden">
+              <div
+                style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div class="hint">Status</div>
+                  <div id="smsVerdict" style="font-weight:500;margin-top:4px"></div>
+                </div>
+                <div style="text-align:right">
+                  <div class="hint">Risk Score</div>
+                  <div id="smsScore" style="font-weight:500;margin-top:4px"></div>
+                </div>
+              </div>
+
+              <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.05)">
+                <div style="font-weight:500;margin-bottom:12px">Indicators</div>
+                <div id="smsIndicators" style="display:grid;gap:8px"></div>
+              </div>
+
+              <div id="smsLinksSection" style="padding:16px;display:none">
+                <div style="font-weight:500;margin-bottom:12px">Links Found</div>
+                <div id="smsLinks" style="display:grid;gap:8px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- URL Test Lab -->
+      <section id="url" class="tab-section section" style="display:none">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <div style="font-weight:800">URL Test Lab</div>
+              <div class="hint">Check URL & domain using url_rules.json validation</div>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:16px">
+            <div class="kv">
+              <label class="hint">URL</label>
+              <input type="text" class="input" placeholder="https://example.com/login?ref=..." id="urlInput">
+            </div>
+
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-analyze" type="button" onclick="analyzeURL()">Analyze URL</button>
+            </div>
+          </div>
+
+          <!-- Results Section -->
+          <div id="urlResults" style="margin-top:24px;display:none" class="result-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <div>
+                <div style="font-weight:800">Analysis Results</div>
+                <div class="hint">Detailed breakdown using url_rules.json</div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:0;overflow:hidden">
+              <div
+                style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div class="hint">Status</div>
+                  <div id="urlVerdict" style="font-weight:500;margin-top:4px"></div>
+                </div>
+                <div style="text-align:right">
+                  <div class="hint">Risk Score</div>
+                  <div id="urlScore" style="font-weight:500;margin-top:4px"></div>
+                </div>
+              </div>
+
+              <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.05)">
+                <div class="hint">Domain</div>
+                <div id="urlDomain" style="font-weight:500;margin-top:4px"></div>
+              </div>
+
+              <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.05)">
+                <div style="font-weight:500;margin-bottom:12px">Indicators</div>
+                <div id="urlIndicators" style="display:grid;gap:8px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+    <div class="footer">
+      <div class="logo">T_S</div>
+      Protect Your Digital Space
+    </div>
+  </div>
+</body>
+
+</html>

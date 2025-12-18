@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Threat_Scanner — Reports</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="assets/auth.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Fallback loop if auth.protectRoute isn't ready immediately
+      const checkAuth = setInterval(() => {
+        if (window.auth && window.auth.protectRoute) {
+          clearInterval(checkAuth);
+          window.auth.protectRoute();
+        }
+      }, 50);
+
+      // Initial load
+      generateReports();
+
+      // Enter key for search
+      document.getElementById("reportDateInput").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") generateReports();
+      });
+    });
+
+    async function generateReports() {
+      const input = document.getElementById("reportDateInput").value.trim();
+      const tbody = document.getElementById("reportsTableBody");
+      const btn = document.querySelector(".btn-primary");
+
+      // Visual feedback
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span style="color: #fff;">Searching...</span>';
+      btn.classList.add('loading');
+
+      try {
+        const response = await fetch(`/api/reports?filter=${encodeURIComponent(input)}`);
+        const reports = await response.json();
+
+        tbody.innerHTML = "";
+
+        if (reports.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted)">No reports found for this query.</td></tr>`;
+        } else {
+          reports.forEach(report => {
+            const row = document.createElement("tr");
+            row.style.cursor = "pointer";
+            row.className = "report-row";
+            row.onclick = () => showReportDetails(report);
+
+            const badgeClass = report.verdict.toLowerCase();
+
+            row.innerHTML = `
+              <td>#${report.id}</td>
+              <td><span class="type-tag">${report.type}</span></td>
+              <td>
+                <div style="font-weight:600;color:var(--text)">${report.summary}</div>
+                <div style="font-size:12px;color:var(--muted);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${report.input}</div>
+              </td>
+              <td>
+                <div class="verdict-badge ${badgeClass}">${report.verdict}</div>
+                <div style="font-size:11px;margin-top:4px">${report.date}</div>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching reports:", error);
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--danger)">Error loading reports. Please try again.</td></tr>`;
+      } finally {
+        btn.innerHTML = originalText;
+        btn.classList.remove('loading');
+      }
+    }
+
+    function showReportDetails(report) {
+      const detailsPane = document.getElementById("detailsPane");
+      const detailsContent = document.getElementById("detailsContent");
+      const welcomeMsg = document.getElementById("detailsWelcome");
+
+      welcomeMsg.style.display = "none";
+      detailsPane.style.display = "block";
+      detailsPane.classList.add('fade-in');
+
+      let detailsHtml = `
+        <div class="details-header">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <span class="type-tag">${report.type} SCAN</span>
+              <h2 style="margin-top:8px;font-weight:800">${report.summary}</h2>
+              <p style="color:var(--muted);font-size:13px;margin-top:4px">ID: #${report.id} • ${new Date(report.timestamp).toLocaleString()}</p>
+            </div>
+            <div class="verdict-badge ${report.verdict.toLowerCase()}" style="font-size:18px;padding:8px 20px">${report.verdict}</div>
+          </div>
+        </div>
+
+        <div class="details-section">
+          <div class="section-title">Input Content</div>
+          <div class="code-block">${report.input}</div>
+        </div>
+      `;
+
+      const d = report.details;
+      if (d) {
+        if (d.reasons && d.reasons.length > 0) {
+          detailsHtml += `
+            <div class="details-section">
+              <div class="section-title">Analysis Reasons</div>
+              <ul class="reasons-list">
+                ${d.reasons.map(r => `<li>${r}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        }
+
+        if (d.indicators) {
+          detailsHtml += `<div class="details-section"><div class="section-title">Risk Indicators</div><div class="grid" style="gap:10px;margin-top:10px">`;
+          for (const [key, val] of Object.entries(d.indicators)) {
+            let status = 'safe';
+            if (val === true || (typeof val === 'number' && val > 0.7) || (Array.isArray(val) && val.length > 0)) {
+              status = 'phishing';
+            } else if (val && val !== false && val !== 0) {
+              status = 'suspicious';
+            }
+
+            const label = key.replace(/_/g, ' ').toUpperCase();
+            detailsHtml += `
+              <div class="indicator-item" style="grid-column: span 6; margin-bottom:0">
+                <span class="indicator-dot ${status}"></span>
+                <span style="font-size:12px">${label}</span>
+              </div>
+            `;
+          }
+          detailsHtml += `</div></div>`;
+        }
+
+        if (d.links_found && d.links_found.length > 0) {
+          detailsHtml += `
+            <div class="details-section">
+              <div class="section-title">Links Detected (${d.links_found.length})</div>
+              ${d.links_found.map(link => `
+                <div class="link-item">
+                  <a href="${link.url}" target="_blank">${link.url}</a>
+                  <span class="link-status">${link.status || ''}</span>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+      }
+
+      detailsContent.innerHTML = detailsHtml;
+
+      // Scroll to details on mobile
+      if (window.innerWidth < 768) {
+        detailsPane.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  </script>
+  <style>
+    .type-tag {
+      background: var(--glass);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .report-row:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .report-row.active {
+      background: rgba(79, 209, 197, 0.05);
+      border-left: 3px solid var(--accent);
+    }
+
+    .details-header {
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      margin-bottom: 20px;
+    }
+
+    .details-section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .code-block {
+      background: #0d1117;
+      padding: 14px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: #c9d1d9;
+    }
+
+    .reasons-list {
+      list-style: none;
+    }
+
+    .reasons-list li {
+      padding: 8px 12px;
+      background: rgba(255, 107, 107, 0.05);
+      border-left: 2px solid var(--danger);
+      margin-bottom: 6px;
+      border-radius: 0 4px 4px 0;
+      font-size: 14px;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">T_S</div>
+        <div>
+          <div class="title">Threat_Scanner</div>
+          <div style="color:var(--muted);font-size:13px">Reports & Forensics</div>
+        </div>
+      </div>
+
+      <nav class="topnav">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="testing.html">Testing</a>
+        <a href="reports.html" class="active">Reports</a>
+        <button id="logoutBtn" class="btn btn-ghost" style="margin-left: auto; padding: 0.5rem 1rem;">Logout</button>
+      </nav>
+    </header>
+
+    <main class="grid" style="align-items: start;">
+      <div class="col-6">
+        <div class="card" style="min-height: 600px;">
+          <div style="display:flex;flex-direction:column;gap:15px">
+            <div style="font-weight:800;font-size:18px">Scan History</div>
+
+            <div style="display:flex;gap:10px">
+              <input id="reportDateInput" class="input" placeholder="Search ID, Type, Date (YYYY-MM-DD)..." />
+              <button class="btn btn-primary" onclick="generateReports()" style="width: auto; white-space:nowrap">
+                <span style="color: #fff;">Generate</span>
+              </button>
+            </div>
+          </div>
+
+          <table class="table" style="margin-top:20px">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Summary</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="reportsTableBody">
+              <!-- Dynamically populated -->
+              <tr>
+                <td colspan="4" style="text-align:center;padding:40px;color:var(--muted)">Click Generate to load
+                  reports...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="col-6">
+        <div class="card" style="min-height: 600px; position: sticky; top: 20px;">
+          <div id="detailsWelcome"
+            style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:550px;color:var(--muted);text-align:center">
+            <div style="font-size:48px;margin-bottom:20px">📊</div>
+            <h3 style="color:var(--text)">Select a Report</h3>
+            <p style="max-width:250px;margin-top:10px">Click on any scan from the list to view comprehensive analysis
+              and forensic data.</p>
+          </div>
+
+          <div id="detailsPane" style="display:none">
+            <div id="detailsContent">
+              <!-- Dynamically populated -->
+            </div>
+
+            <div
+              style="margin-top:30px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05);display:flex;gap:10px">
+              <button class="btn btn-ghost" style="flex:1" onclick="window.print()">Download PDF</button>
+              <button class="btn btn-analyze" style="flex:1" onclick="alert('Exporting to JSON...')">Export
+                Data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div class="footer">
+      <div class="logo" style="width:32px;height:32px;font-size:12px">T_S</div>
+      Protect Your Digital Space • ThreatScanner Engine v2.4
+    </div>
+  </div>
+</body>
+
+</html>
