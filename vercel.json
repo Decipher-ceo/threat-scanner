@@ -1,20 +1,49 @@
 {
+    "cleanUrls": true,
     "rewrites": [
         {
-            "source": "/dashboard/:match*",
-            "destination": "https://YOUR_RENDER_APP_URL/dashboard/:match*"
+            "source": "/",
+            "destination": "/frontend/login.html"
+        },
+        {
+            "source": "/api/auth/:match*",
+            "destination": "https://YOUR_RENDER_APP_URL/api/auth/:match*"
+        },
+        {
+            "source": "/scan-:match*",
+            "destination": "https://YOUR_RENDER_APP_URL/scan-:match*"
+        },
+        {
+            "source": "/dashboard/stats",
+            "destination": "https://YOUR_RENDER_APP_URL/dashboard/stats"
         },
         {
             "source": "/stats/:match*",
             "destination": "https://YOUR_RENDER_APP_URL/stats/:match*"
         },
         {
-            "source": "/analyze/:match*",
-            "destination": "https://YOUR_RENDER_APP_URL/analyze/:match*"
+            "source": "/assets/:match*",
+            "destination": "/frontend/assets/:match*"
         },
         {
-            "source": "/auth/:match*",
-            "destination": "https://YOUR_RENDER_APP_URL/auth/:match*"
+            "source": "/dashboard",
+            "destination": "/frontend/dashboard.html"
+        },
+        {
+            "source": "/testing",
+            "destination": "/frontend/testing.html"
+        },
+        {
+            "source": "/reports",
+            "destination": "/frontend/reports.html"
+        },
+        {
+            "source": "/signup",
+            "destination": "/frontend/signup.html"
+        },
+        {
+            "source": "/login",
+            "destination": "/frontend/login.html"
         }
     ]
 }
