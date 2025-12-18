@@ -5,6 +5,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Threat_Scanner— Tests</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#112a46">
   <link rel="stylesheet" href="assets/styles.css">
   <style>
     .result-card {
@@ -126,7 +128,41 @@
       }
     }
 
-    window.addEventListener('DOMContentLoaded', () => selectTab('email'));
+    window.addEventListener('DOMContentLoaded', () => {
+      selectTab('email');
+
+      // PWA Service Worker Registration
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js');
+      }
+
+      // Handle Share Target Data (from other apps)
+      const params = new URLSearchParams(window.location.search);
+      const title = params.get('title');
+      const text = params.get('text');
+      const url = params.get('url');
+
+      if (url) {
+        selectTab('url');
+        document.getElementById('urlInput').value = url;
+        // Optional: Auto-analyze if user desires, but safer to let them click
+      } else if (text || title) {
+        // If text looks like a URL but wasn't shared as one
+        if (text && (text.startsWith('http') || text.startsWith('www'))) {
+          selectTab('url');
+          document.getElementById('urlInput').value = text;
+        } else if (text && text.length < 200 && !title) {
+          // Assume SMS if short and no subject
+          selectTab('sms');
+          document.getElementById('smsContent').value = text;
+        } else {
+          // Default to Email
+          selectTab('email');
+          if (title) document.getElementById('emailSubject').value = title;
+          if (text) document.getElementById('emailContent').value = text;
+        }
+      }
+    });
 
     // =========================
     // EMAIL SCANNER

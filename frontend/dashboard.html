@@ -5,9 +5,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Threat_Scanner — Manager Dashboard</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#112a46">
   <link rel="stylesheet" href="assets/styles.css">
   <script src="assets/auth.js" defer></script>
   <script src="../js/dashboard.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(reg => {
+          console.log('SW registered:', reg);
+        }).catch(err => console.log('SW reg failed:', err));
+      });
+    }
+  </script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Wait for auth to initialize then protect route

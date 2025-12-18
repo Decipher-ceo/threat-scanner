@@ -746,7 +746,8 @@ body {
 }
 
 /* Responsive */
-@media (max-width:980px) {
+/* Responsive */
+@media (max-width: 980px) {
   .grid {
     grid-template-columns: repeat(6, 1fr)
   }
@@ -764,26 +765,129 @@ body {
   }
 }
 
-@media (max-width:520px) {
+@media (max-width: 768px) {
   body {
-    padding: 14px
+    padding: 14px;
   }
 
+  /* Navigation adjustments for tablet/mobile */
   .header {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 12px
+    align-items: stretch;
+    gap: 16px;
   }
 
+  .topnav {
+    overflow-x: auto;
+    white-space: nowrap;
+    justify-content: flex-start;
+    padding: 8px 4px;
+    /* Hide scrollbar */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .topnav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .topnav a {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  /* Make tables horizontally scrollable */
+  .table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .stat .circle {
+    width: 90px;
+    height: 90px;
+    font-size: 16px;
+  }
+
+  /* Tabs stacking */
+  .tabs {
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    flex: 1;
+    text-align: center;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 520px) {
   .grid {
-    grid-template-columns: repeat(1, 1fr)
+    grid-template-columns: 1fr;
   }
 
   .col-4,
   .col-6,
   .col-8,
   .col-12 {
-    grid-column: span 1
+    grid-column: span 1;
+  }
+
+  .brand {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .logo {
+    width: 40px;
+    height: 40px;
+    font-size: 12px;
+  }
+
+  .title {
+    font-size: 16px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  /* Stack flex items in cards */
+  .stat.card>div,
+  .card>div {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+
+  /* Exception for specific flex rows that should stay rows */
+  .card .circle,
+  .indicator-item,
+  .link-item {
+    align-self: center;
+  }
+
+  .stat-info {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  /* Adjust risk indicator position */
+  .stat .risk-indicator {
+    display: block;
+    margin-top: 4px;
+  }
+
+  /* Buttons full width on mobile */
+  .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Inputs full width */
+  .input,
+  .kv {
+    width: 100%;
   }
 }
 
